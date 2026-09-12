@@ -1,0 +1,211 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Reverie · handmade objects</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<style>
+  html,body{margin:0;height:100%;background:#f4e7ef;overflow:hidden;font-family:Georgia,'Times New Roman',serif}
+  canvas{display:block}
+  #caption{position:fixed;left:2.2vw;bottom:2.4vh;color:#5d3f58;font-size:clamp(14px,1.55vw,30px);letter-spacing:.02em;line-height:1.35;text-shadow:0 1px 0 rgba(255,255,255,.55);pointer-events:none}
+  #caption b{font-weight:600}
+  #caption small{display:block;font-size:.62em;opacity:.72}
+  #status{position:fixed;right:1.2vw;top:1vh;font:12px/1.4 ui-monospace,monospace;color:#7a5a72;opacity:.55;white-space:pre;pointer-events:none}
+  #status.hidden{display:none}
+</style>
+</head>
+<body>
+<div id="caption"><b>Reverie</b> · handmade three.js objects<small>every form built from geometry in code · neomythism.net</small></div>
+<div id="status"></div>
+<script type="module">
+import * as THREE from './vendor/three.module.js';
+import {createFairyArchitectureKit} from './realm-fairy-architecture-kit.js';
+import {waitForFairyFinishes} from './realm-fairy-finishes.js';
+import {buildFairyFurniture} from './realm-fairy-furniture.js';
+import {buildFairySmallDetails, buildFairySteppingStone} from './realm-fairy-small-details.js';
+import {buildFairyBespokeObjects} from './realm-fairy-bespoke-objects.js';
+import {buildFairyDiscoveries} from './realm-fairy-discoveries.js';
+import {buildFairyObservatory, buildFairyGateway} from './realm-fairy-landmarks.js';
+import {buildFairyPavilion} from './realm-fairy-pavilion.js';
+import {createPathOrnaments} from './realm-path-ornaments.js';
+import {createGardenPaths} from './realm-garden-paths.js';
+import {createArrivalArbor} from './realm-arrival-arbor.js';
+import {createTeaPartyFurniture} from './realm-tea-party-furniture.js';
+import {createTeaPartyProps} from './realm-tea-party-props.js';
+import {createOriginalDollhouse} from './realm-original-dollhouse.js';
+import {addOriginalDollhouseJewels} from './realm-original-dollhouse-jewels.js';
+import {addOriginalDollhouseLace} from './realm-original-dollhouse-lace.js';
+import {addOriginalDollhousePortal} from './realm-original-dollhouse-portal.js';
+
+const params = new URLSearchParams(location.search);
+const STILL = params.get('still') === '1';
+if (params.get('caption') === '0') document.getElementById('caption').hidden = true;
+const status = document.getElementById('status');
+if (params.get('debug') !== '1') status.classList.add('hidden');
+const note = s => { status.textContent += s + '\n'; };
+window.__errors = [];
+addEventListener('error', e => window.__errors.push(String(e.message || e)));
+addEventListener('unhandledrejection', e => window.__errors.push(String(e.reason?.message || e.reason)));
+const safe = (name, fn) => { try { return fn(); } catch (e) { note(`${name} failed: ${e.message}`); window.__errors.push(`${name}: ${e.message}`); return null; } };
+const objectsOf = v => v?.isObject3D ? [v] : v && typeof v === 'object' ? Object.values(v).filter(o => o?.isObject3D) : [];
+
+/* ---- build every object family ---- */
+const kit = createFairyArchitectureKit(THREE);
+const items = [];   // {name, object, min, max}: min/max clamp the displayed size (metres)
+const show = (name, value, min = 1.5, max = 3.9) => { const object = objectsOf(value)[0]; if (!object) { note(`${name}: nothing to show`); return; } object.removeFromParent(); items.push({name, object, min, max}); };
+
+const furniture = safe('furniture', () => buildFairyFurniture(THREE));
+if (furniture) for (const type of furniture.types) show(`furniture · ${type}`, safe(type, () => objectsOf(furniture.create(type))[0]), 1.8, 3.2);
+const details = safe('small details', () => buildFairySmallDetails(THREE, kit)?.prototypes) || {};
+for (const [k, o] of Object.entries(details)) show(`detail · ${k}`, o, 1.8, 2.5);
+show('stepping stone', safe('stepping stone', () => buildFairySteppingStone(THREE, kit)), 1.6, 1.6);
+for (const [k, o] of Object.entries(safe('bespoke', () => buildFairyBespokeObjects(THREE, kit)?.prototypes) || {})) show(`heirloom · ${k}`, o, 1.7, 3.0);
+for (const [k, o] of Object.entries(safe('discoveries', () => buildFairyDiscoveries(THREE, kit)?.prototypes) || {})) show(`discovery · ${k}`, o, 3.2, 4.4);
+show('path ornaments', safe('path ornaments', () => createPathOrnaments(THREE, {
+  lanterns: [{position: [-.75, 0, .1], variant: 0}, {position: [.75, 0, .1], variant: 1}],
+  signs: [{position: [0, 0, -.3], label: 'Tea garden', direction: 1}],
+})?.group), 2.2, 2.6);
+show('garden path', safe('paths', () => createGardenPaths(THREE, {paths: [{points: [[-1.6, 0, .5], [-.5, 0, -.3], [.6, 0, .4], [1.6, 0, -.2]], width: 1.2}]})?.group), 2.6, 3.2);
+const teaParty = new THREE.Group(); teaParty.name = 'The Unbirthday table';
+for (const o of objectsOf(safe('tea furniture', () => createTeaPartyFurniture(THREE)))) teaParty.add(o);
+for (const o of objectsOf(safe('tea props', () => createTeaPartyProps(THREE)?.group))) teaParty.add(o);
+if (teaParty.children.length) show('tea party', teaParty, 4.6, 5.2);
+show('arrival arbor', safe('arbor', () => createArrivalArbor(THREE, {position: [0, 0, 0]})), 3.6, 4.4);
+show('lotus pavilion', safe('pavilion', () => buildFairyPavilion(THREE, kit)), 4.2, 5.2);
+show('observatory', safe('observatory', () => buildFairyObservatory(THREE, kit)), 4.0, 5.0);
+show('gateway', safe('gateway', () => buildFairyGateway(THREE, kit)), 4.0, 5.0);
+const dollhouse = safe('dollhouse', () => createOriginalDollhouse(THREE));
+const dollhouseRoot = objectsOf(dollhouse)[0];
+if (dollhouseRoot) {
+  for (const [name, fn] of [['jewels', addOriginalDollhouseJewels], ['lace', addOriginalDollhouseLace], ['portal', addOriginalDollhousePortal]]) {
+    for (const o of objectsOf(safe(name, () => fn(THREE, dollhouseRoot)))) if (!o.parent) dollhouseRoot.add(o);
+  }
+  show('dollhouse', dollhouseRoot, 6.0, 6.4);
+}
+note(`${items.length} objects`);
+
+/* ---- renderer, light, environment ---- */
+const renderer = new THREE.WebGLRenderer({antialias: true, preserveDrawingBuffer: true});
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.setSize(innerWidth, innerHeight);
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.0;
+document.body.prepend(renderer.domElement);
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color('#f4e7ef');
+{ // a small lit room as the reflection environment, so nacre, satin and gilt have something to mirror
+  const room = new THREE.Scene();
+  const box = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1), new THREE.MeshStandardMaterial({color: '#d9c4d6', side: THREE.BackSide, roughness: 1}));
+  box.scale.setScalar(24); box.position.y = 8; room.add(box);
+  const panel = (w, h, color, intensity, x, y, z, rx, ry) => { const m = new THREE.Mesh(new THREE.PlaneGeometry(w, h), new THREE.MeshBasicMaterial({color, side: THREE.DoubleSide})); m.material.color.multiplyScalar(intensity); m.position.set(x, y, z); m.rotation.set(rx, ry, 0); room.add(m); };
+  panel(9, 5, '#fff3e6', 6, 6, 14, 6, -Math.PI / 2, 0);
+  panel(7, 4, '#eaf0ff', 3, -9, 9, -4, 0, Math.PI / 2);
+  panel(10, 3, '#ffe4f0', 2.2, 0, 4, -11.5, 0, 0);
+  const pmrem = new THREE.PMREMGenerator(renderer);
+  scene.environment = pmrem.fromScene(room, .04).texture;
+  scene.environmentIntensity = .9;
+  pmrem.dispose();
+}
+scene.add(new THREE.HemisphereLight('#fff0f6', '#c9b3cf', 1.0));
+const sun = new THREE.DirectionalLight('#fff3e2', 2.6);
+sun.position.set(14, 22, 16); sun.castShadow = true;
+sun.shadow.mapSize.set(4096, 4096); sun.shadow.bias = -0.0003; sun.shadow.normalBias = .03; sun.shadow.radius = 4;
+scene.add(sun);
+const fill = new THREE.DirectionalLight('#e3ecff', .5); fill.position.set(-16, 9, -10); scene.add(fill);
+
+/* ---- asset-sheet layout: big things at the back, small things in front ---- */
+const box3 = new THREE.Box3(), size = new THREE.Vector3(), center = new THREE.Vector3();
+for (const it of items) {
+  it.object.updateMatrixWorld(true);
+  box3.setFromObject(it.object); box3.getSize(size); box3.getCenter(center);
+  const dim = Math.max(size.x, size.y, size.z, 1e-6);
+  it.display = THREE.MathUtils.clamp(dim, it.min, it.max);
+  it.scale = it.display / dim;
+  it.w = size.x * it.scale; it.d = size.z * it.scale; it.h = size.y * it.scale;
+  it.offset = new THREE.Vector3(-center.x, -box3.min.y, -center.z).multiplyScalar(it.scale);
+  it.object.traverse(m => { if (m.isMesh) { m.castShadow = true; m.receiveShadow = true; } });
+}
+items.sort((a, b) => b.display - a.display);
+const aspect0 = innerWidth / innerHeight;
+const ROWS = Number(params.get('rows')) || (aspect0 >= 1.5 ? 4 : aspect0 >= 1.1 ? 5 : 6), GAP = 1.25;
+const totalWidth = items.reduce((a, i) => a + i.w + GAP, 0);
+const rowTarget = totalWidth / ROWS;
+const rows = [];
+for (const it of items) {
+  let row = rows[rows.length - 1];
+  if (!row || (row.width + (it.w + GAP) / 2 > rowTarget && rows.length < ROWS)) { row = {items: [], width: 0}; rows.push(row); }
+  row.items.push(it); row.width += it.w + (row.items.length > 1 ? GAP : 0);
+}
+const layout = new THREE.Group(); scene.add(layout);
+let z = 0, minX = Infinity, maxX = -Infinity, minZ = Infinity, maxZ = -Infinity, maxH = 0;
+for (const [ri, row] of rows.entries()) {
+  const depth = Math.max(...row.items.map(i => i.d));
+  const nextH = rows[ri + 1] ? Math.max(...rows[ri + 1].items.map(i => i.h)) : 0;
+  z += depth / 2;
+  let x = -row.width / 2;
+  for (const it of row.items) {
+    const holder = new THREE.Group(); holder.name = it.name;
+    holder.add(it.object); it.object.scale.setScalar(it.scale); it.object.position.copy(it.offset);
+    holder.position.set(x + it.w / 2, 0, z);
+    layout.add(holder);
+    minX = Math.min(minX, x); maxX = Math.max(maxX, x + it.w); maxH = Math.max(maxH, it.h);
+    x += it.w + GAP;
+  }
+  minZ = Math.min(minZ, z - depth / 2); maxZ = Math.max(maxZ, z + depth / 2);
+  const rowH = Math.max(...row.items.map(i => i.h));
+  z += depth / 2 + THREE.MathUtils.clamp(Math.max(rowH * .5, nextH * 1.15), 1.7, 7.5);
+}
+const ground = new THREE.Mesh(new THREE.CircleGeometry(90, 128), new THREE.MeshStandardMaterial({color: '#eddce7', roughness: .96, metalness: 0}));
+ground.rotation.x = -Math.PI / 2; ground.position.y = -.002; ground.receiveShadow = true; scene.add(ground);
+const span = Math.max(maxX - minX, maxZ - minZ) / 2 + 3;
+Object.assign(sun.shadow.camera, {left: -span, right: span, top: span, bottom: -span, near: 1, far: 90});
+sun.shadow.camera.position.copy(sun.position); sun.shadow.camera.updateProjectionMatrix();
+
+/* ---- camera: fit the sheet by projecting every object's bounds ---- */
+const camera = new THREE.PerspectiveCamera(26, innerWidth / innerHeight, .1, 400);
+const target = new THREE.Vector3((minX + maxX) / 2, maxH * .16, (minZ + maxZ) / 2 + .6);
+const corners = [];
+layout.updateMatrixWorld(true);
+for (const holder of layout.children) {
+  const b = new THREE.Box3().setFromObject(holder);
+  for (const x of [b.min.x, b.max.x]) for (const y of [b.min.y, b.max.y]) for (const z of [b.min.z, b.max.z]) corners.push(new THREE.Vector3(x, y, z));
+}
+const elev = THREE.MathUtils.degToRad(41);
+let dist = 60;
+function place(t = 0) {
+  const yaw = STILL ? 0 : Math.sin(t / 11000) * .06;
+  camera.position.set(target.x + Math.sin(yaw) * dist * Math.cos(elev), target.y + dist * Math.sin(elev), target.z + Math.cos(yaw) * dist * Math.cos(elev));
+  camera.lookAt(target);
+  camera.updateMatrixWorld(true);
+}
+function frame(t = 0) {
+  camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix();
+  const v = new THREE.Vector3();
+  for (let i = 0; i < 12; i++) {           // converge on the distance where the whole sheet sits inside the frame
+    place(t);
+    let mx = 0, my = 0;
+    for (const c of corners) { v.copy(c).project(camera); mx = Math.max(mx, Math.abs(v.x)); my = Math.max(my, Math.abs(v.y)); }
+    const limitX = .96, limitY = .84;       // leave room at the bottom for the caption
+    const ratio = Math.max(mx / limitX, my / limitY);
+    if (Math.abs(ratio - 1) < .004) break;
+    dist *= Math.pow(ratio, .8);
+  }
+  place(t);
+}
+addEventListener('resize', () => { renderer.setSize(innerWidth, innerHeight); frame(); });
+
+await waitForFairyFinishes().catch(e => note(`finishes: ${e.message}`));
+const t0 = performance.now();
+function tick(now) {
+  frame(now); renderer.render(scene, camera);
+  if (!window.__ready && now - t0 > 150) window.__ready = true;
+  if (!STILL) requestAnimationFrame(tick);
+}
+requestAnimationFrame(tick);
+if (STILL) setTimeout(() => { frame(); renderer.render(scene, camera); window.__ready = true; }, 400);
+</script>
+</body>
+</html>
